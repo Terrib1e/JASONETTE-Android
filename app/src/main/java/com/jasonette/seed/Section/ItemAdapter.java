@@ -39,9 +39,11 @@ public class ItemAdapter extends RecyclerView.Adapter <ItemAdapter.ViewHolder>{
     Context context;
     Context root_context;
     ArrayList<JSONObject> items;
+    ArrayList<JSONObject> cloned_items;
     Map<String, Integer> signature_to_type = new HashMap<String,Integer>();
     Map<Integer, String> type_to_signature = new HashMap<Integer, String>();
     ViewHolderFactory factory = new ViewHolderFactory();
+    Boolean isHorizontalScroll = false;
 
 
     /********************************************************
@@ -83,8 +85,25 @@ public class ItemAdapter extends RecyclerView.Adapter <ItemAdapter.ViewHolder>{
 
     public ItemAdapter(Context root_context, Context context, ArrayList<JSONObject> items) {
         this.items = items;
+        this.cloned_items = new ArrayList<JSONObject>();
+        this.cloned_items.addAll(items);
         this.context = context;
         this.root_context = root_context;
+    }
+
+    public void filter(String text) {
+        this.items.clear();
+        if(text.isEmpty()){
+            this.items.addAll(this.cloned_items);
+        } else{
+            text = text.toLowerCase();
+            for(JSONObject item: this.cloned_items){
+                if(item.toString().toLowerCase().contains(text)){
+                    this.items.add(item);
+                }
+            }
+        }
+        notifyDataSetChanged();
     }
 
     @Override
@@ -163,6 +182,7 @@ public class ItemAdapter extends RecyclerView.Adapter <ItemAdapter.ViewHolder>{
 
             // 2. Create Adapter
             ItemAdapter horizontal_adapter = new ItemAdapter(context, horizontalListView.getContext(), new ArrayList<JSONObject>());
+            horizontal_adapter.isHorizontalScroll = true;
 
             // 3. Connect RecyclerView with Adapter
             horizontalListView.setAdapter(horizontal_adapter);
@@ -389,6 +409,7 @@ public class ItemAdapter extends RecyclerView.Adapter <ItemAdapter.ViewHolder>{
                     // Layout styling
                     String type = item.getString("type");
                     JSONObject style = JasonHelper.style(item, root_context);
+                    layout.setBackgroundColor(JasonHelper.parse_color("rgba(0,0,0,0)"));
 
                     JSONArray components;
                     if (type.equalsIgnoreCase("vertical") || type.equalsIgnoreCase("horizontal")) {
@@ -410,7 +431,7 @@ public class ItemAdapter extends RecyclerView.Adapter <ItemAdapter.ViewHolder>{
                     }
 
                     // set width and height
-                    layoutParams = JasonLayout.autolayout(parent, item, root_context);
+                    layoutParams = JasonLayout.autolayout(isHorizontalScroll, parent, item, root_context);
 
                     layout.setLayoutParams(layoutParams);
 
@@ -549,7 +570,7 @@ public class ItemAdapter extends RecyclerView.Adapter <ItemAdapter.ViewHolder>{
                 }
                 view.requestLayout();
             } catch (Exception e) {
-                Log.d("Error", e.toString());
+                Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
             }
         }
 

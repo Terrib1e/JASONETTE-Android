@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
 
+import com.jasonette.seed.Helper.JasonHelper;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -29,13 +31,43 @@ public class JasonRequire implements Runnable{
     JSONObject private_refs;
 
     public JasonRequire(String url, CountDownLatch latch, JSONObject refs, OkHttpClient client, Context context) {
-        this.URL = url;
+        this.URL = url.replace("\\", "");
         this.latch = latch;
         this.private_refs = refs;
         this.context = context;
         this.client = client;
     }
-    public void run(){
+    public void run() {
+        if(this.URL.contains("file://")) {
+            local();
+        } else {
+            remote();
+        }
+    }
+    private void local(){
+        try {
+            Runnable r = new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    Object json = JasonHelper.read_json(URL, context);
+                    try {
+                        private_refs.put(URL, json);
+                    } catch (Exception e) {
+                        Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
+                    }
+                    latch.countDown();
+                }
+            };
+            Thread t = new Thread(r);
+            t.start();
+        } catch (Exception e) {
+            Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
+            latch.countDown();
+        }
+    }
+    private void remote(){
         Request request;
         Request.Builder builder = new Request.Builder();
 
@@ -43,7 +75,7 @@ public class JasonRequire implements Runnable{
         try {
             SharedPreferences pref = context.getSharedPreferences("session", 0);
             JSONObject session = null;
-            URI uri_for_session = new URI(this.URL.toLowerCase());
+            URI uri_for_session = new URI(this.URL);
             String session_domain = uri_for_session.getHost();
             if(pref.contains(session_domain)){
                 String str = pref.getString(session_domain, null);
@@ -108,13 +140,13 @@ public class JasonRequire implements Runnable{
                         }
                         latch.countDown();
                     } catch (JSONException e) {
-                        Log.d("Error", e.toString());
+                        Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
                     }
                 }
             });
 
         } catch (Exception e){
-            Log.d("Error", e.toString());
+            Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
         }
     }
 }

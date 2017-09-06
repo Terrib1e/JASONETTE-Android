@@ -31,6 +31,10 @@ public class JasonComponentFactory {
                 view = JasonTextareaComponent.build(prototype, component, parent, context);
             } else if(type.equalsIgnoreCase("html")) {
                 view = JasonHtmlComponent.build(prototype, component, parent, context);
+            } else if(type.equalsIgnoreCase("map")) {
+                view = JasonMapComponent.build(prototype, component, parent, context);
+            } else if(type.equalsIgnoreCase("slider")) {
+                view = JasonSliderComponent.build(prototype, component, parent, context);
             } else {
                 // Non-existent component warning
                 JSONObject error_component = new JSONObject(component.toString());
@@ -43,7 +47,7 @@ public class JasonComponentFactory {
 
         }
         catch (Exception e){
-            Log.d("Error", e.toString());
+            Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
         }
 
         return new View(context);

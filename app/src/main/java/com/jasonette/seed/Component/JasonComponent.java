@@ -2,6 +2,7 @@ package com.jasonette.seed.Component;
 
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
@@ -16,9 +17,17 @@ import com.jasonette.seed.Section.JasonLayout;
 import org.json.JSONObject;
 
 public class JasonComponent {
+
+    public static final String INTENT_ACTION_CALL = "call";
+    public static final String ACTION_PROP = "action";
+    public static final String DATA_PROP = "data";
+    public static final String HREF_PROP = "href";
+    public static final String TYPE_PROP = "type";
+    public static final String OPTIONS_PROP = "options";
+
     public static View build(View view, final JSONObject component, final JSONObject parent, final Context root_context) {
-        int width = 0;
-        int height = 0;
+        float width = 0;
+        float height = 0;
         int corner_radius = 0;
 
         view.setTag(component);
@@ -32,21 +41,29 @@ public class JasonComponent {
                 if (style.has("height")) {
                     try {
                         height = (int) JasonHelper.pixels(root_context, style.getString("height"), "vertical");
+                        if (style.has("ratio")) {
+                            Float ratio = JasonHelper.ratio(style.getString("ratio"));
+                            width = height * ratio;
+                        }
                     } catch (Exception e) {
                     }
                 }
                 if (style.has("width")) {
                     try {
                         width = (int) JasonHelper.pixels(root_context, style.getString("width"), "horizontal");
+                        if (style.has("ratio")) {
+                            Float ratio = JasonHelper.ratio(style.getString("ratio"));
+                            height = width / ratio;
+                        }
                     } catch (Exception e) {
                     }
                 }
 
-                RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(width, height);
+                RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams((int)width, (int)height);
                 view.setLayoutParams(layoutParams);
             } else {
                 // Section item type
-                LinearLayout.LayoutParams layoutParams = JasonLayout.autolayout(parent, component, root_context);
+                LinearLayout.LayoutParams layoutParams = JasonLayout.autolayout(null, parent, component, root_context);
                 view.setLayoutParams(layoutParams);
             }
 
@@ -64,19 +81,6 @@ public class JasonComponent {
                 }
             }
 
-            if (style.has("corner_radius")) {
-                float corner = (float)style.getDouble("corner_radius");
-                int color = ContextCompat.getColor(root_context, android.R.color.transparent);
-                GradientDrawable cornerShape = new GradientDrawable();
-                cornerShape.setShape(GradientDrawable.RECTANGLE);
-                if (style.has("background")) {
-                    color = JasonHelper.parse_color(style.getString("background"));
-                }
-                cornerShape.setColor(color);
-                cornerShape.setCornerRadius(corner);
-                cornerShape.invalidateSelf();
-                view.setBackground(cornerShape);
-            }
 
             // padding
             int padding_left = (int)JasonHelper.pixels(root_context, "0", "horizontal");
@@ -104,11 +108,57 @@ public class JasonComponent {
                 padding_bottom = (int)JasonHelper.pixels(root_context, style.getString("padding_bottom"), "vertical");
             }
 
+            if (style.has("corner_radius")) {
+                float corner = JasonHelper.pixels(root_context, style.getString("corner_radius"), "horizontal");
+                int color = ContextCompat.getColor(root_context, android.R.color.transparent);
+                GradientDrawable cornerShape = new GradientDrawable();
+                cornerShape.setShape(GradientDrawable.RECTANGLE);
+                if (style.has("background")) {
+                    color = JasonHelper.parse_color(style.getString("background"));
+                }
+                cornerShape.setColor(color);
+                cornerShape.setCornerRadius(corner);
+
+                // border + corner_radius handling
+                if (style.has("border_width")){
+                    int border_width = (int)JasonHelper.pixels(root_context, style.getString("border_width"), "horizontal");
+                    if(border_width > 0){
+                        int border_color;
+                        if (style.has("border_color")){
+                            border_color = JasonHelper.parse_color(style.getString("border_color"));
+                        } else {
+                            border_color = JasonHelper.parse_color("#000000");
+                        }
+                        cornerShape.setStroke(border_width, border_color);
+                    }
+                }
+                cornerShape.invalidateSelf();
+                view.setBackground(cornerShape);
+            } else {
+                // border handling (no corner radius)
+                if (style.has("border_width")){
+                    int border_width = (int)JasonHelper.pixels(root_context, style.getString("border_width"), "horizontal");
+                    if(border_width > 0){
+                        int border_color;
+                        if (style.has("border_color")){
+                            border_color = JasonHelper.parse_color(style.getString("border_color"));
+                        } else {
+                            border_color = JasonHelper.parse_color("#000000");
+                        }
+                        GradientDrawable cornerShape = new GradientDrawable();
+                        cornerShape.setStroke(border_width, border_color);
+                        cornerShape.invalidateSelf();
+                        view.setBackground(cornerShape);
+                    }
+                }
+
+            }
+
             view.setPadding(padding_left, padding_top, padding_right, padding_bottom);
             return view;
 
         } catch (Exception e){
-            Log.d("Error", e.toString());
+            Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
             return new View(root_context);
         }
     }
@@ -139,7 +189,7 @@ public class JasonComponent {
                         }
                     }
                 } catch (Exception e) {
-                    Log.d("Error", e.toString());
+                    Log.d("Warning", e.getStackTrace()[0].getMethodName() + " : " + e.toString());
                 }
             }
         };
